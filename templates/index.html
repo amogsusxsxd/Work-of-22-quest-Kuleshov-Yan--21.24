@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Гостевая книга</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .message { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .author { font-weight: bold; color: #333; }
+        .date { color: #666; font-size: 0.9em; }
+        form { margin-bottom: 30px; }
+        input, textarea { display: block; margin-bottom: 10px; width: 100%; padding: 8px; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Гостевая книга</h1>
+
+    <form action="{{ url_for('sign') }}" method="post">
+        <input type="text" name="author" placeholder="Ваше имя" required>
+        <textarea name="message" placeholder="Ваше сообщение" rows="4" required></textarea>
+        <button type="submit">Отправить</button>
+    </form>
+
+    <div id="messages">
+        {% for message in messages %}
+        <div class="message">
+            <div class="author">{{ message.author }}</div>
+            <div class="date">{{ message.timestamp[:16] }}</div>
+            <div class="text">{{ message.message }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

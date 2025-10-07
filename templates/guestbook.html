@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Гостевая книга</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .message { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .author { font-weight: bold; color: #333; }
+        .date { color: #666; font-size: 0.9em; }
+        form { margin-bottom: 30px; }
+        input, textarea { display: block; margin-bottom: 10px; width: 100%; padding: 8px; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Гостевая книга</h1>
+
+    <form id="messageForm">
+        <input type="text" id="author" placeholder="Ваше имя" required>
+        <textarea id="message" placeholder="Ваше сообщение" rows="4" required></textarea>
+        <button type="submit">Отправить</button>
+    </form>
+
+    <div id="messages"></div>
+
+    <script>
+        let db;
+        const request = indexedDB.open("GuestBookDB", 1);
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            const objectStore = db.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
+            objectStore.createIndex("author", "author", { unique: false });
+            objectStore.createIndex("message", "message", { unique: false });
+            objectStore.createIndex("timestamp", "timestamp", { unique: false });
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            loadMessages();
+        };
+
+        request.onerror = function(event) {
+            console.error("Ошибка открытия базы данных:", event.target.errorCode);
+        };
+
+        document.getElementById('messageForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const author = document.getElementById('author').value;
+            const message = document.getElementById('message').value;
+
+            const transaction = db.transaction(["messages"], "readwrite");
+            const objectStore = transaction.objectStore("messages");
+            const newMessage = {
+                author: author,
+                message: message,
+                timestamp: new Date().toISOString()
+            };
+            const request = objectStore.add(newMessage);
+
+            request.onsuccess = function() {
+                document.getElementById('messageForm').reset();
+                loadMessages(); 
+            };
+        });
+
+        function loadMessages() {
+            const transaction = db.transaction(["messages"], "readonly");
+            const objectStore = transaction.objectStore("messages");
+            const index = objectStore.index("timestamp");
+            const request = index.openCursor(null, "prev");
+
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = '';
+
+            request.onsuccess = function(event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const msg = cursor.value;
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'message';
+                    messageElement.innerHTML = `
+                        <div class="author">${escapeHtml(msg.author)}</div>
+                        <div class="date">${new Date(msg.timestamp).toLocaleString()}</div>
+                        <div class="text">${escapeHtml(msg.message)}</div>
+                    `;
+                    messagesContainer.appendChild(messageElement);
+                    cursor.continue();
+                }
+            };
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
